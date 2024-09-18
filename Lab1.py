@@ -25,12 +25,6 @@ for title in window_titles:
     windows.append(window)
 
 def to_homogeneous(coords: np.ndarray) -> np.ndarray:
-    """
-    Преобразование массива точек из обычных координат в однородные.
-
-    :param coords: Массив точек в обычных координатах, размерностью (n, 2).
-    :return: Массив точек в однородных координатах, размерностью (n, 3).
-    """
     if coords.shape[1] != 2:
         raise ValueError("Input coordinates must have shape (n, 2)")
 
@@ -41,12 +35,7 @@ def to_homogeneous(coords: np.ndarray) -> np.ndarray:
 
 
 def to_cartesian(homogeneous_coords: np.ndarray) -> np.ndarray:
-    """
-    Преобразование массива точек из однородных координат в обычные.
 
-    :param homogeneous_coords: Массив точек в однородных координатах, размерностью (n, 3).
-    :return: Массив точек в обычных координатах, размерностью (n, 2).
-    """
     if homogeneous_coords.shape[1] != 3:
         raise ValueError("Input coordinates must have shape (n, 3)")
 
@@ -68,6 +57,20 @@ def draw_line(K, L, color):
     glVertex2f(L[0], L[1])
     glEnd()
 
+def draw_light(Light,color):
+    glColor3f(*color)
+    glPointSize(5.0)
+    glBegin(GL_POINTS)
+    glVertex2f(Light[0], Light[1])
+    glEnd()
+
+def draw_proj(vertices,color):
+    glColor3f(*color)
+    glPointSize(5.0)
+    glBegin(GL_POINTS)
+    for vertex in vertices:
+        glVertex2f(vertex[0], vertex[1])
+    glEnd()
 def line_eq(K,L):
     return (L[1]-K[1],K[0]-L[0],L[0]*K[1]-K[0]*L[1])
 
@@ -109,8 +112,37 @@ def reflect(vertices, K, L):
     reflected_vertices = od_vertices @ M.T
     return to_cartesian(reflected_vertices)
 
+def projections(vertices,K,L):
+    vert = to_homogeneous(vertices)
+    l_v = np.array([0,-1])
+    matrix = np.eye(len(vert))
+    A,B,C = line_eq(K,L)
+    temp = np.array((A,B,C)) / (np.array((A, B)) @ l_v)
+    temp = np.tile(temp, (2, 1))
+    temp = (temp.T * np.array((0, -1))).T
+    matrix[:2] -= temp
+    #tt = np.array((A, B)) @ l_v
+    #matrix = np.array([
+    #    [1-A/tt*l_v[0]]
+    #])
+    projection = vert@matrix.T
 
+    return to_cartesian(projection)
 # Функция для задания 1 (Отражение относительно прямой)
+
+def projections1(vertices,K,L,S):
+    vert = to_homogeneous(vertices)
+    A,B,C = line_eq(K,L)
+
+    matrix = np.array([
+        [A*S[0]-C-np.array((A,B))@S, B*S[0], C*S[0]],
+        [A*S[1], B*S[1]-C-np.array((A,B))@S, C*S[1]],
+        [A,B, -np.array((A,B))@S]
+    ])
+
+    projection = vert@matrix.T
+
+    return to_cartesian(projection)
 def task_1(window):
     # Вершины многоугольника Θ (включая однородную координату)
     vertices = np.array([
@@ -121,7 +153,7 @@ def task_1(window):
 
     # Прямая Λ, проходящая через точки K и L
     K = np.array([240, 240], dtype=float)
-    L = np.array([420, 250], dtype=float)
+    L = np.array([420, 350], dtype=float)
 
     glClear(GL_COLOR_BUFFER_BIT)
     draw_polygon(vertices, color=(0, 1, 0))
@@ -133,26 +165,73 @@ def task_1(window):
 
 # Функция для задания 2 (например, рисование квадрата)
 def task_2(window):
-    glClear(GL_COLOR_BUFFER_BIT)
     vertices = np.array([
-        [-0.5, -0.5],
-        [0.5, -0.5],
-        [0.5, 0.5],
-        [-0.5, 0.5]
-    ])
-    draw_polygon(vertices, color=(0, 0, 1))
+        [300, 330],
+        [270, 290],
+        [340, 300]
+    ], dtype=int)
+
+    # Прямая Λ, проходящая через точки K и L
+    K = np.array([240, 240], dtype=float)
+    L = np.array([420, 250], dtype=float)
+
+    Light = np.array([300, 420], dtype=float)
+    glClear(GL_COLOR_BUFFER_BIT)
+
+    # Рисуем исходную фигуру
+    draw_polygon(vertices, color=(0, 1, 0))
+
+    # Рисуем прямую
+    draw_line(K, L, color=(0, 0, 1))
+
+    draw_light(Light, color=(1, 0, 0))
+
+    proj_vert = projections(vertices, K, L)
+    draw_proj(proj_vert, color=(1, 0, 0))
+
+    draw_line(vertices[0],proj_vert[0],color = (1,1,1))
+    draw_line(vertices[1], proj_vert[1],color = (1,1,1))
+    draw_line(vertices[2], proj_vert[2],color = (1,1,1))
+    # Выполняем отражение
+    #reflected_vertices = reflect(vertices, K, L)
+
+    # Рисуем отраженную фигуру
+    #draw_polygon(reflected_vertices[:, :2], color=(1, 0, 0))
+
     glfw.swap_buffers(window)
 
 
 # Функция для задания 3 (например, рисование круга)
 def task_3(window):
+
+    vertices = np.array([
+        [300, 330],
+        [270, 290],
+        [340, 300]
+    ], dtype=int)
+
+    # Прямая Λ, проходящая через точки K и L
+    K = np.array([240, 240], dtype=float)
+    L = np.array([420, 250], dtype=float)
+
+    Light = np.array([300, 420], dtype=float)
+
     glClear(GL_COLOR_BUFFER_BIT)
-    glBegin(GL_POLYGON)
-    for i in range(100):
-        angle = 2 * np.pi * i / 100
-        glColor3f(1.0, i / 100.0, 0.0)
-        glVertex2f(np.cos(angle) * 0.5, np.sin(angle) * 0.5)
-    glEnd()
+
+    # Рисуем исходную фигуру
+    draw_polygon(vertices, color=(0, 1, 0))
+
+    # Рисуем прямую
+    draw_line(K, L, color=(0, 0, 1))
+
+    draw_light(Light, color=(1, 0, 0))
+
+    proj_vert = projections1(vertices, K, L, Light)
+    draw_proj(proj_vert, color=(1, 0, 0))
+
+    draw_line(Light, proj_vert[0], color=(1, 1, 1))
+    draw_line(Light, proj_vert[1], color=(1, 1, 1))
+    draw_line(Light, proj_vert[2], color=(1, 1, 1))
     glfw.swap_buffers(window)
 
 # Основной цикл

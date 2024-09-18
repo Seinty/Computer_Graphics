@@ -61,13 +61,17 @@ def display():
 
     draw_light(Light, color=(1,0,0))
 
-    proj_vert = projections(vertices,K,L)
+    proj_vert = projections(vertices,K,L,Light)
     draw_proj(proj_vert,color=(1,0,0))
+
+    draw_line(Light,proj_vert[0],color = (1,1,1))
+    draw_line(Light, proj_vert[1], color=(1, 1, 1))
+    draw_line(Light, proj_vert[2], color=(1, 1, 1))
     # Выполняем отражение
-    reflected_vertices = reflect(vertices, K, L)
+    #reflected_vertices = reflect(vertices, K, L)
 
     # Рисуем отраженную фигуру
-    draw_polygon(reflected_vertices[:, :2], color=(1, 0, 0))
+    #draw_polygon(reflected_vertices[:, :2], color=(1, 0, 0))
 
     glfw.swap_buffers(window)
 
@@ -141,15 +145,15 @@ def reflect(vertices, K, L):
     reflected_vertices = od_vertices @ M.T
     return to_cartesian(reflected_vertices)
 
-def projections(vertices,K,L):
+def projections(vertices,K,L,S):
     vert = to_homogeneous(vertices)
-    l_v = np.array([1,-1])
-    matrix = np.eye(len(vert))
     A,B,C = line_eq(K,L)
-    temp = np.array((A,B,C)) / (np.array((A, B)) @ l_v)
-    temp = np.tile(temp, (2, 1))
-    temp = (temp.T * np.array((0, -1))).T
-    matrix[:2] -= temp
+
+    matrix = np.array([
+        [A*S[0]-C-np.array((A,B))@S, B*S[0], C*S[0]],
+        [A*S[1], B*S[1]-C-np.array((A,B))@S, C*S[1]],
+        [A,B, -np.array((A,B))@S]
+    ])
 
     projection = vert@matrix.T
 
